@@ -65,9 +65,12 @@ function queryDataTable() {
 function onMessage(event) {
   Logger.log(event.message.sender.displayName);
   var message = event.message.text;
-  // loadMessage(message);
 
-  if (message === 'random') {
+  if (event.message.sender.displayName === 'Constantino Nuzzo') {
+    loadMessage(message);
+  }
+
+  if (message === 'random Constantino') {
     var randomSaying = queryDataTable();
     return { text: randomSaying };
   } else {
