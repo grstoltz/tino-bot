@@ -1,58 +1,49 @@
-const {BigQuery} = require('@google-cloud/bigquery');
+require('dotenv').config();
 const express = require('express');
-const bodyParser = require('body-parser')
-const cors = require('cors')
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const mongoose = require('mongoose');
 
 const app = express();
 
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(cors({ origin: true }))
+mongoose.connect(
+  `mongodb+srv://${process.env.MONGOUSERNAME}:${
+    process.env.MONGOPASSWORD
+  }@cluster0-yep2z.gcp.mongodb.net/test?retryWrites=true`,
+  { useNewUrlParser: true }
+);
 
-const PORT = 8080 || process.env.PORT
+const Message = require('./models/Message');
 
-const projectId = 'tinobot';
-const datasetId = 'messages';
-const tableId = 'messages';
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(cors({ origin: true }));
 
-const bigquery = new BigQuery({  
-    projectId: projectId,
-});
+const PORT = 8080 || process.env.PORT;
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
 
-app.get('/test', (req, res, next) => {
-    res.send("hello")
-})
-
-app.get('/message', (req, res, next) => {
-    const query = `SELECT *, RAND() AS r FROM [tinobot:messages.messages] ORDER BY r LIMIT 1`;
-
-bigquery.createQueryStream(query)
-  .on('error', console.error)
-  .on('data', function(row) {
-    res.send(row)
-  })
-  .on('end', function() {
-    // All rows retrieved.
-  });
-
+app.get('/', (req, res, next) => {
+  res.send('hello');
 });
 
-app.post('/message', async (req, res, next) => {
-    const row = [{
-           message: req.body.message
-       }]
-
-await bigquery
-  .dataset(datasetId)
-  .table(tableId)
-  .insert(row);
-
+app.get('/api/message', async (req, res, next) => {
+  Message.aggregate([{ $sample: { size: 1 } }]).then(result =>
+    res.send(result)
+  );
 });
 
+app.post('/api/message', async (req, res, next) => {
+  Message.create({ message: req.body.message }).then(result =>
+    res.send(result)
+  );
+});
+
+app.post('/api/delete/message', async (req, res, next) => {
+  Message.deleteOne({ _id: req.body.id }).then(result => res.send(result));
+});
 module.exports = {
-    app
+  app
 };
-

@@ -1,59 +1,46 @@
 /**
  * Loads a message into BigQuery
  */
-function loadMessage(message) {
-  // Replace this value with the project ID listed in the Google
-  // Cloud Platform project.
-  var projectId = 'tinobot';
-  // Create a dataset in the BigQuery UI (https://bigquery.cloud.google.com)
-  // and enter its ID below.
-  var datasetId = 'messages';
+function postMessage(message) {
+  var url = 'https://us-central1-tinobot.cloudfunctions.net/app/api/message';
 
-  // Create the table.
-  var tableId = 'messages';
+  var payload = {
+    message: message
+  };
 
-  function bigqueryInsertData(data, tableId) {
-    var insertAllRequest = BigQuery.newTableDataInsertAllRequest();
+  var options = {
+    method: 'POST',
+    payload: payload,
+    followRedirects: true,
+    muteHttpExceptions: true
+  };
 
-    insertAllRequest.rows = [];
+  var result = UrlFetchApp.fetch(url, options);
 
-    var row1 = BigQuery.newTableDataInsertAllRequestRows();
-    row1.json = {
-      message: data
-    };
-    insertAllRequest.rows.push(row1);
+  if (result.getResponseCode() == 200) {
+    var params = JSON.parse(result.getContentText());
 
-    var response = BigQuery.Tabledata.insertAll(
-      insertAllRequest,
-      projectId,
-      datasetId,
-      tableId
-    );
-    if (response.insertErrors) {
-      Logger.log(response.insertErrors);
-    }
+    return;
   }
-  bigqueryInsertData(message, tableId);
 }
 
-function queryDataTable() {
-  // Replace this value with the project ID listed in the Google
-  // Cloud Platform project.
-  var projectId = 'tinobot';
+function getMessage() {
+  var url = 'https://us-central1-tinobot.cloudfunctions.net/app/api/message';
 
-  var dataSetId = 'messages';
-  var tableId = 'messages';
+  var options = {
+    method: 'GET',
+    followRedirects: true,
+    muteHttpExceptions: true
+  };
 
-  var fullTableName = projectId + ':' + dataSetId + '.' + tableId;
+  var result = UrlFetchApp.fetch(url, options);
 
-  var queryRequest = BigQuery.newQueryRequest();
-  queryRequest.query =
-    'SELECT *, RAND() AS r FROM [' + fullTableName + '] ORDER BY r LIMIT 1;';
-  var query = BigQuery.Jobs.query(queryRequest, projectId);
+  Logger.log(result);
 
-  if (query.jobComplete) {
-    Logger.log(query.rows[0].f[0].v);
-    return query.rows[0].f[0].v;
+  if (result.getResponseCode() == 200) {
+    var params = JSON.parse(result.getContentText());
+
+    return params[0].message;
   }
 }
 
@@ -67,11 +54,11 @@ function onMessage(event) {
   var message = event.message.text;
 
   if (event.message.sender.displayName === 'Constantino Nuzzo') {
-    loadMessage(message);
+    postMessage(message);
   }
 
-  if (message === 'random Constantino') {
-    var randomSaying = queryDataTable();
+  if (event.message.annotations[0].userMention.user.displayName == 'tinobot') {
+    var randomSaying = getMessage();
     return { text: randomSaying };
   } else {
     return;
